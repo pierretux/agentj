@@ -9,6 +9,7 @@ use App\Entity\MessageRecipient;
 use App\Entity\SenderRule;
 use App\Entity\User;
 use App\Message\AmavisRelease;
+use App\Repository\DomainRepository;
 use App\Repository\MessageRecipientRepository;
 use App\Repository\MessageRepository;
 use App\Repository\RuleAddressRepository;
@@ -28,7 +29,36 @@ class MessageService
         private SenderRuleRepository $senderRuleRepository,
         private CryptEncryptService $cryptEncryptService,
         private SpamassassinService $spamassassinService,
+        private DomainRepository $domainRepository,
     ) {
+    }
+
+    /** @var ?string[] */
+    private ?array $managedDomainNames = null;
+
+    /**
+     * Whether the sender that a ban would target (see getSenderEmail()) belongs
+     * to one of the domains managed by this instance: a colleague, or the
+     * recipient himself. Banning such an address only blocks internal mail
+     * and doesn't protect against spoofing (handled by SPF/DKIM/DMARC).
+     */
+    public function isInternalSender(Message $message): bool
+    {
+        $senderEmail = $message->getSenderEmail();
+        if (!$senderEmail || !str_contains($senderEmail, '@')) {
+            return false;
+        }
+
+        if ($this->managedDomainNames === null) {
+            $this->managedDomainNames = array_map(
+                fn (Domain $domain): string => mb_strtolower((string) $domain->getDomain()),
+                $this->domainRepository->findAll(),
+            );
+        }
+
+        $senderDomain = mb_strtolower(substr($senderEmail, strrpos($senderEmail, '@') + 1));
+
+        return in_array($senderDomain, $this->managedDomainNames, true);
     }
 
     /**
@@ -144,6 +174,10 @@ class MessageService
     {
         $message = $messageRecipient->getMessage();
 
+        if ($this->isInternalSender($message)) {
+            return false;
+        }
+
         $senderEmail = $message->getSenderEmail();
 
         if (!$senderEmail) {
@@ -197,6 +231,10 @@ class MessageService
     public function banSenderForDomain(MessageRecipient $messageRecipient, int $validationSource): bool
     {
         $message = $messageRecipient->getMessage();
+
+        if ($this->isInternalSender($message)) {
+            return false;
+        }
 
         $senderEmail = $message->getSenderEmail();
 

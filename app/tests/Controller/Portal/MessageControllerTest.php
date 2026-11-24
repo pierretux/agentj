@@ -567,7 +567,8 @@ class MessageControllerTest extends WebTestCase
         $domain = DomainFactory::createOne();
         $recipient1 = UserFactory::new()->user($domain)->create();
         $recipient2 = UserFactory::new()->user($domain)->create();
-        $sender = UserFactory::new()->user($domain)->create();
+        // External sender: internal ones can't be banned.
+        $sender = UserFactory::new()->user($domain)->create(['email' => 'sender@external.test']);
         [$addrS, $addrR1] = $this->setupAddresses($sender, $recipient1);
         $addrR2 = AddressFactory::createOne([
             'domain' => Url::reverseDomainName($recipient2->getDomain()->getDomain()),
@@ -604,12 +605,41 @@ class MessageControllerTest extends WebTestCase
         ]);
     }
 
+    public function testUserCannotBanAColleagueFromReport(): void
+    {
+        $domain = DomainFactory::createOne();
+        $recipient = UserFactory::new()->user($domain)->create();
+        $sender = UserFactory::new()->user($domain)->create();
+        [$addrS, $addrR] = $this->setupAddresses($sender, $recipient);
+        $message = $this->setupMail($addrS, [$addrR], status: MessageStatus::UNTREATED);
+        $messageRecipient = $message->getMessageRecipients()->first();
+        self::assertNotFalse($messageRecipient);
+        $token = $this->messageService->getReleaseToken($message, $recipient);
+        $urlBan = $this->urlGenerator->generate('portal_message_banned', [
+            'token' => $token,
+            'partitionTag' => $messageRecipient->getPartitionTag(),
+            'mailId' => $messageRecipient->getMailId(),
+            'rseqnum' => $messageRecipient->getRseqnum(),
+            'new' => 1,
+        ], UrlGeneratorInterface::ABSOLUTE_URL);
+
+        $this->client->request(Request::METHOD_POST, $urlBan);
+
+        self::assertResponseIsSuccessful();
+        self::assertSelectorNotExists('[data-test=confirm-content]');
+        self::assertSame(MessageStatus::UNTREATED, $messageRecipient->getStatus());
+        LogFactory::assert()->notExists([
+            'action' => LogAction::Banned->value,
+        ]);
+    }
+
     public function testUserHasToConfirmBannishment(): void
     {
         $domain = DomainFactory::createOne();
         $recipient1 = UserFactory::new()->user($domain)->create();
         $recipient2 = UserFactory::new()->user($domain)->create();
-        $sender = UserFactory::new()->user($domain)->create();
+        // External sender: internal ones can't be banned.
+        $sender = UserFactory::new()->user($domain)->create(['email' => 'sender@external.test']);
         [$addrS, $addrR1] = $this->setupAddresses($sender, $recipient1);
         $addrR2 = AddressFactory::createOne([
             'domain' => Url::reverseDomainName($recipient2->getDomain()->getDomain()),
@@ -659,7 +689,8 @@ class MessageControllerTest extends WebTestCase
         $domain = DomainFactory::createOne();
         $recipient1 = UserFactory::new()->user($domain)->create();
         $recipient2 = UserFactory::new()->user($domain)->create();
-        $sender = UserFactory::new()->user($domain)->create();
+        // External sender: internal ones can't be banned.
+        $sender = UserFactory::new()->user($domain)->create(['email' => 'sender@external.test']);
         [$addrS, $addrR1] = $this->setupAddresses($sender, $recipient1);
         $addrR2 = AddressFactory::createOne([
             'domain' => Url::reverseDomainName($recipient2->getDomain()->getDomain()),
@@ -696,7 +727,8 @@ class MessageControllerTest extends WebTestCase
         $domain = DomainFactory::createOne();
         $recipient1 = UserFactory::new()->user($domain)->create();
         $recipient2 = UserFactory::new()->user($domain)->create();
-        $sender = UserFactory::new()->user($domain)->create();
+        // External sender: internal ones can't be banned.
+        $sender = UserFactory::new()->user($domain)->create(['email' => 'sender@external.test']);
         [$addrS, $addrR1] = $this->setupAddresses($sender, $recipient1);
         $addrR2 = AddressFactory::createOne([
             'domain' => Url::reverseDomainName($recipient2->getDomain()->getDomain()),

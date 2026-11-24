@@ -137,6 +137,10 @@ class MessageController extends AbstractController
 
         $this->checkMailAccess($user, $messageRecipient);
 
+        if ($this->messageService->isInternalSender($messageRecipient->getMessage())) {
+            return $this->render('portal/messages/banned_internal.html.twig');
+        }
+
         if ($request->isMethod(Request::METHOD_POST)) {
             $result = $this->messageService->banSenderForRecipient(
                 $messageRecipient,

@@ -995,7 +995,8 @@ class MessageControllerTest extends WebTestCase
             'domain' => $domain,
             'originalUser' => $recipient,
         ]);
-        $sender = UserFactory::new()->user($domain)->create();
+        // External sender: internal ones can't be banned.
+        $sender = UserFactory::new()->user($domain)->create(['email' => 'sender@external.test']);
         $this->client->loginUser($recipient);
         [$addrS, $addrR] = $this->setupAddresses($sender, $recipient);
         $message = $this->setupMail($addrS, [$addrR], status: MessageStatus::UNTREATED);
@@ -1107,7 +1108,8 @@ class MessageControllerTest extends WebTestCase
         $otherDomain = DomainFactory::createOne();
         $recipient1 = UserFactory::new()->user($domain)->create();
         $recipient2 = UserFactory::new()->user($otherDomain)->create();
-        $sender = UserFactory::new()->user($domain)->create();
+        // External sender: internal ones can't be banned.
+        $sender = UserFactory::new()->user($domain)->create(['email' => 'sender@external.test']);
         $admin = UserFactory::new()->admin([$otherDomain])->create();
         $this->client->loginUser($admin);
         [$addrS, $addrR1] = $this->setupAddresses($sender, $recipient1);
@@ -1793,7 +1795,8 @@ class MessageControllerTest extends WebTestCase
             'domain' => $domain,
             'originalUser' => $recipient,
         ]);
-        $sender = UserFactory::new()->user($domain)->create();
+        // External sender: internal ones can't be banned.
+        $sender = UserFactory::new()->user($domain)->create(['email' => 'sender@external.test']);
         $this->client->loginUser($recipient);
         [$addrS, $addrR] = $this->setupAddresses($sender, $recipient);
         $message = $this->setupMail($addrS, [$addrR], status: MessageStatus::UNTREATED);

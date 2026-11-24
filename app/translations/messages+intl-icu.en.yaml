@@ -628,6 +628,7 @@ Navigation.whitelist: 'Authorized senders'
 Portal.Messages.authorized.backToMessages: 'See my authorized mails'
 Portal.Messages.authorized.senderAuthorized: 'The address is now authorized.'
 Portal.Messages.banned.backToMessages: 'See my banned mails'
+Portal.Messages.banned.internalSender: 'This address belongs to your organization (a colleague or yourself): it cannot be banned. You can simply delete this message.'
 Portal.Messages.banned.senderBanned: 'The address is now banned.'
 Portal.Messages.confirm: Confirm
 Portal.Messages.confirmAuthorize: 'You are about to allow the sender {from}.'
