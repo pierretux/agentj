@@ -132,6 +132,46 @@ class SendAuthMailRequestCommandTest extends KernelTestCase
         self::assertEmailCount(0);
     }
 
+    /**
+     * @return array<string, array{string, bool}>
+     */
+    public static function senderLocalPartProvider(): array
+    {
+        return [
+            'noreply' => ['noreply', false],
+            'no-reply' => ['No-Reply', false],
+            'donotreply' => ['donotreply', false],
+            'ne-pas-repondre' => ['ne-pas-repondre', false],
+            'nepasrepondre' => ['nepasrepondre', false],
+            'suffixed' => ['alerts-noreply', false],
+            'prefixed' => ['noreply.notifications', false],
+            'BATV tagged' => ['prvs=781907b46=noreply', false],
+            'BATV tagged regular address' => ['prvs=781907b46=john.doe', true],
+            'regular address' => ['john.doe', true],
+            'containing reply' => ['reply', true],
+            'containing noreply in a word' => ['xnoreplyx', true],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('senderLocalPartProvider')]
+    public function testAuthMailIsSentOnlyToRepliableSenders(string $localPart, bool $expectedSent): void
+    {
+        $domain = DomainFactory::createOne();
+        $recipient = UserFactory::new()->user($domain)->create();
+        $sender = UserFactory::new()->user($domain)->create([
+            'email' => $localPart . '@' . $domain->getDomain(),
+        ]);
+        [$addrS, $addrR] = $this->setupAddresses($sender, $recipient);
+        $message = $this->setupMail($addrS, [$addrR]);
+        $this->setupMessageToAuthenticate($message, '-6 hours');
+
+        $command = self::executeCommand('agentj:send-auth-mail-token');
+
+        $command->assertCommandIsSuccessful();
+        self::assertEmailCount($expectedSent ? 1 : 0);
+        self::assertNotSame(0, $message->getSendCaptcha());
+    }
+
     public function testAuthMailIsNotSentWhenMailIsNotYetProcessedByAmavis(): void
     {
         $domain = DomainFactory::createOne();

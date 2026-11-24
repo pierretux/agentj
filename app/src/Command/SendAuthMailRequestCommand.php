@@ -78,6 +78,14 @@ class SendAuthMailRequestCommand
                 continue;
             }
 
+            // Same for the "no-reply" addresses: they don't accept incoming
+            // emails, so the request would only generate a bounce.
+            if ($this->isNoReplyAddress($message->getSenderAddress()->getEmail())) {
+                $message->setSendCaptcha(time());
+                $this->messageRepository->save($message);
+                continue;
+            }
+
             $requiresProcessing = false;
             $recipientUsersByDomains = [];
 
@@ -176,6 +184,27 @@ class SendAuthMailRequestCommand
 
         $lock->release();
         return Command::SUCCESS;
+    }
+
+    /**
+     * Return whether the given address is a "no-reply" address (e.g.
+     * noreply@, no-reply@, donotreply@, ne-pas-repondre@, alerts-noreply@).
+     *
+     * The BATV tag (e.g. prvs=1234abcd=noreply@example.com) is ignored.
+     */
+    private function isNoReplyAddress(?string $email): bool
+    {
+        if (!$email) {
+            return false;
+        }
+
+        $localPart = strtolower(explode('@', $email)[0]);
+        $localPart = preg_replace('/^(?:prvs|msprvs\d*|btv1)=[^=]+=/', '', $localPart) ?? $localPart;
+
+        return preg_match(
+            '/(?:^|[-_.+])(?:no|do[-_.]?not|ne[-_.]?pas)[-_.]?(?:reply|repondre)(?:[-_.+]|$)/',
+            $localPart,
+        ) === 1;
     }
 
     /**
