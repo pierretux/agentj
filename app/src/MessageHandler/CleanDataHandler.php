@@ -46,6 +46,22 @@ final class CleanDataHandler
         }
 
         try {
+            $output = new BufferedOutput();
+            $input = new ArrayInput([
+                '--check-dns' => true,
+            ]);
+            $command = $this->application->find('agentj:clean-sender-rules');
+
+            $command->run($input, $output);
+
+            $this->logger->info("Sender rules cleaned:\n{$output->fetch()}");
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to clean the sender rules.', [
+                'exception' => $e,
+            ]);
+        }
+
+        try {
             $deletedCount = $this->unsubscribeRequestRepository->truncateOlder($this->historyRetentionDays);
 
             $this->logger->info("Deleted {$deletedCount} unsubscribe request(s).");

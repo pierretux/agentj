@@ -24,6 +24,13 @@ class RuleAddress
     #[ORM\Column(name: 'email', type: Types::BINARY, length: 255, nullable: false)]
     private string $email;
 
+    /**
+     * When the domain of this address was first seen missing from the DNS
+     * (see the agentj:clean-sender-rules command), null if it exists.
+     */
+    #[ORM\Column(name: 'dns_failed_at', type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $dnsFailedAt = null;
+
     public function getId(): int
     {
         return $this->id;
@@ -49,6 +56,18 @@ class RuleAddress
     public function setEmail(string $email): self
     {
         $this->email = Email::normalize($email);
+
+        return $this;
+    }
+
+    public function getDnsFailedAt(): ?\DateTimeImmutable
+    {
+        return $this->dnsFailedAt;
+    }
+
+    public function setDnsFailedAt(?\DateTimeImmutable $dnsFailedAt): self
+    {
+        $this->dnsFailedAt = $dnsFailedAt;
 
         return $this;
     }
